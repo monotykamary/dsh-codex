@@ -1,0 +1,38 @@
+/** Browser-plugin stylesheet: injected with the same lifecycle as the slot shadow. */
+export const assistantCss = {
+  root: 'dsh-codex-assistant-root',
+  body: 'dsh-codex-assistant-body',
+  stopped: 'dsh-codex-assistant-stopped',
+  reasoning: 'dsh-codex-reasoning',
+  reasoningRow: 'dsh-codex-reasoning-row',
+  leading: 'dsh-codex-reasoning-leading',
+  chevron: 'dsh-codex-reasoning-chevron',
+  title: 'dsh-codex-reasoning-title',
+  separator: 'dsh-codex-reasoning-separator',
+  summary: 'dsh-codex-reasoning-summary',
+  thinkBody: 'dsh-codex-reasoning-body',
+  visuallyHidden: 'dsh-codex-visually-hidden',
+} as const
+
+export const assistantStyleText = [
+  '.dsh-codex-assistant-root{display:flex;flex-direction:column;color:var(--dsw-alias-label-primary);font-size:16px;line-height:28px}',
+  '.dsh-codex-assistant-body{display:flex;flex-direction:column;gap:16px}',
+  '.dsh-codex-assistant-stopped{align-self:flex-start;padding:0 6px;border-radius:6px;background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:18px}',
+  '.dsh-codex-reasoning{display:flex;flex-direction:column}',
+  '.dsh-codex-reasoning-row{position:relative;overflow:hidden}',
+  ".dsh-codex-reasoning[data-state='running'] .dsh-codex-reasoning-row::after{position:absolute;inset-block:0;left:0;width:300px;background:linear-gradient(90deg,transparent 0%,color-mix(in srgb,var(--dsw-alias-bg-base) 60%,transparent) 55%,transparent 100%);animation:dsh-codex-reasoning-sweep 2.6s ease-out infinite;content:'';pointer-events:none}",
+  '@keyframes dsh-codex-reasoning-sweep{0%{left:-300px}90%,100%{left:100%}}',
+  '.dsh-codex-reasoning-leading{flex-shrink:0}',
+  '.dsh-codex-reasoning-chevron{color:var(--dsw-alias-label-secondary)}',
+  '.dsh-codex-reasoning-title{font-weight:400}',
+  '.dsh-codex-reasoning-separator{flex:none;width:2px;height:2px;margin:0 8px;border-radius:1px;background:var(--dsw-alias-label-caption)}',
+  '.dsh-codex-reasoning-summary{min-width:0;overflow:hidden;flex:1 1 auto;color:var(--dsw-alias-label-tertiary);font-size:14px;line-height:24px;text-overflow:ellipsis;white-space:nowrap}',
+  '.dsh-codex-reasoning-summary[data-follow-end]{text-overflow:clip}',
+  '.dsh-codex-reasoning-body{padding:4px 0 4px 22px;color:var(--dsw-alias-label-tertiary);font-size:14px;line-height:24px;word-break:break-word}',
+  '.dsh-codex-reasoning-body>div{color:inherit;font:inherit}',
+  '.dsh-codex-reasoning-body.dsh-codex-reasoning-body :where(h1,h2,h3,h4,h5,h6){margin:8px 0;font:inherit!important;font-weight:600!important}',
+  '.dsh-codex-reasoning-body.dsh-codex-reasoning-body :not(pre)>code{font-size:.875em!important;line-height:inherit!important}',
+  '.dsh-codex-reasoning-body :where(p,ul,ol,blockquote,pre){margin-block:8px}',
+  '.dsh-codex-visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;margin:-1px;padding:0;border:0;clip:rect(0 0 0 0);white-space:nowrap}',
+  "@media (prefers-reduced-motion:reduce){.dsh-codex-reasoning[data-state='running'] .dsh-codex-reasoning-row::after{animation:none}}",
+].join('\n')
