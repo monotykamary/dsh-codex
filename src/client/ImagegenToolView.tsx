@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
-import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
-import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
+import type { ImageAttachmentRef } from '@monotykamary/dsh-attachment'
+import type { ToolCallViewProps } from '@monotykamary/dsh-client-ui-tool/client'
 import type { OpenAICodexSettingsKey } from './locales.ts'
 
 export type ImageLoader = (attachment: ImageAttachmentRef) => Promise<string>

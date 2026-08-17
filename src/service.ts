@@ -1,7 +1,7 @@
 /** Shared host service consumed by optional OpenAI Codex front-door adapters. */
 
 import type { AuthInteraction } from '@earendil-works/pi-ai'
-import type { Context } from '@deepseek-ai/cordis'
+import type { Context } from '@monotykamary/cordis'
 import { loginOpenAICodex, logoutOpenAICodex, openAICodexAuthStatus } from './auth.ts'
 import type { OpenAICodexAuthStatus } from './auth.ts'
 import { OpenAICodexCredentialStore } from './store.ts'
@@ -13,7 +13,7 @@ import type {
 import { readOpenAICodexRateLimits } from './usage.ts'
 import type { OpenAICodexUsage } from './usage.ts'
 
-declare module '@deepseek-ai/cordis' {
+declare module '@monotykamary/cordis' {
   interface Context {
     /** Provider-owned account and preference service for optional front doors. */
     openAICodex: OpenAICodexService

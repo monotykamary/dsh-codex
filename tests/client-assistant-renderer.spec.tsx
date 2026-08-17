@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ChatViewSlotProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { ClientContext } from '@monotykamary/dsh-client-runtime/client'
+import type { ChatViewSlotProps } from '@monotykamary/dsh-client-ui-conversation/client'
 import {
   CodexAssistantBody, registerCodexAssistantRenderer,
 } from '../src/client/CodexAssistantRenderer.tsx'
@@ -66,6 +66,24 @@ describe('Codex assistant renderer bridge', () => {
     expect(view.getByText('persistence').tagName).toBe('CODE')
     expect(assistantStyleText).toContain('font-size:.875em!important')
     expect(assistantStyleText).toContain('font:inherit!important')
+  })
+
+  it('keeps one critical stylesheet mounted with assistant cells', () => {
+    const first = render(
+      <CodexAssistantBody blocks={[{ kind: 'reasoning', text: 'Plan' }]} streaming t={t} />,
+    )
+    const second = render(
+      <CodexAssistantBody blocks={[{ kind: 'text', text: 'Answer' }]} streaming={false} t={t} />,
+    )
+
+    expect(document.head.querySelectorAll('style[data-dsh-codex-assistant]')).toHaveLength(1)
+    expect(document.head.querySelector('style[data-dsh-codex-assistant]')?.textContent)
+      .toBe(assistantStyleText)
+
+    first.unmount()
+    expect(document.head.querySelectorAll('style[data-dsh-codex-assistant]')).toHaveLength(1)
+    second.unmount()
+    expect(document.head.querySelectorAll('style[data-dsh-codex-assistant]')).toHaveLength(0)
   })
 
   it('keeps tool-only settled steps visually empty', () => {

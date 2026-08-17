@@ -1,13 +1,13 @@
 /** Browser half: OpenAI Codex account management inside dsh Settings. */
 
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-slots'
+import type { ClientContext } from '@monotykamary/dsh-client-runtime/client'
+import type { SessionId } from '@monotykamary/dsh-client-runtime/client'
+import type { ImageAttachmentRef } from '@monotykamary/dsh-attachment'
+import type {} from '@monotykamary/dsh-client-ui-settings/client'
+import type {} from '@monotykamary/dsh-client-ui-tool/client'
+import type {} from '@monotykamary/dsh-client-ui-conversation/client'
+import type {} from '@monotykamary/dsh-client-locale/client'
+import type {} from '@monotykamary/dsh-client-ui-slots'
 import { OpenAICodexSettings } from './OpenAICodexSettings.tsx'
 import type { OpenAICodexSettingsInjected } from './OpenAICodexSettings.tsx'
 import { ImagegenToolView } from './ImagegenToolView.tsx'
@@ -16,7 +16,7 @@ import { registerCodexAssistantRenderer } from './CodexAssistantRenderer.tsx'
 import { en, zh } from './locales.ts'
 import type { OpenAICodexSettingsKey } from './locales.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@monotykamary/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** OpenAI Codex account page copy. */
     'settings.openai-codex': OpenAICodexSettingsKey

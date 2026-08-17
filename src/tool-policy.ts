@@ -1,8 +1,8 @@
-import type { Context } from '@deepseek-ai/cordis'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
-import type { SettingsScope } from '@deepseek-ai/dsh-settings'
-import type { ToolExecution } from '@deepseek-ai/dsh-tools'
-import z from '@deepseek-ai/schemastery'
+import type { Context } from '@monotykamary/cordis'
+import { settingsNamespace } from '@monotykamary/dsh-settings'
+import type { SettingsScope } from '@monotykamary/dsh-settings'
+import type { ToolExecution } from '@monotykamary/dsh-tools'
+import z from '@monotykamary/schemastery'
 import { OPENAI_CODEX_PROVIDER } from './store.ts'
 
 /** User-controlled image-tool integration. */

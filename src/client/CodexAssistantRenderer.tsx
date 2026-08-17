@@ -1,17 +1,40 @@
 /** Thin assistant-step bridge: preserve Harness block primitives and customize only reasoning. */
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useInsertionEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { AssistantBlock, ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { AssistantBlock, ClientContext } from '@monotykamary/dsh-client-runtime/client'
 import type {
   ChatNodeViewProps, ChatViewSlotProps, TurnTailOwnerProps,
-} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { ImageGallery } from '@deepseek-ai/dsh-client-ui-attachment'
-import type { ImageLoader, MessageImageLabels } from '@deepseek-ai/dsh-client-ui-attachment'
+} from '@monotykamary/dsh-client-ui-conversation/client'
+import { ImageGallery } from '@monotykamary/dsh-client-ui-attachment'
+import type { ImageLoader, MessageImageLabels } from '@monotykamary/dsh-client-ui-attachment'
 import {
   DisclosureRow, extractMarkdownPlainText, IconThinkOutline14, JsonBlock, MarkdownText,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { MarkdownFileMentions } from '@deepseek-ai/dsh-client-ui-primitives'
+} from '@monotykamary/dsh-client-ui-primitives'
+import type { MarkdownFileMentions } from '@monotykamary/dsh-client-ui-primitives'
 import { assistantCss as css, assistantStyleText } from './CodexAssistantStyles.ts'
+
+let assistantStyleElement: HTMLStyleElement | undefined
+let assistantStyleUsers = 0
+
+/** Keep critical renderer styles present for exactly as long as an assistant cell is mounted. */
+function useAssistantStyles(): void {
+  useInsertionEffect(() => {
+    assistantStyleUsers += 1
+    if (assistantStyleElement?.isConnected !== true) {
+      assistantStyleElement = document.createElement('style')
+      assistantStyleElement.dataset.dshCodexAssistant = ''
+      assistantStyleElement.textContent = assistantStyleText
+      document.head.append(assistantStyleElement)
+    }
+    return () => {
+      assistantStyleUsers -= 1
+      if (assistantStyleUsers === 0) {
+        assistantStyleElement?.remove()
+        assistantStyleElement = undefined
+      }
+    }
+  }, [])
+}
 
 function firstLine(text: string): string {
   const newline = text.indexOf('\n')
@@ -97,6 +120,7 @@ interface AssistantBodyProps {
 export const CodexAssistantBody = memo(function CodexAssistantBody({
   blocks, streaming, interrupted, loadImage, mentions, t,
 }: AssistantBodyProps) {
+  useAssistantStyles()
   const imageLoader = loadImage ?? (() => Promise.reject(new Error(t('image.serviceUnavailable'))))
   const codeLabels = useMemo(() => ({ copyLabel: t('copy'), copiedLabel: t('copied') }), [t])
   const labels = useMemo(() => imageLabels(t), [t])
@@ -161,13 +185,6 @@ export const CodexAssistantBody = memo(function CodexAssistantBody({
 
 /** Register the bridge as a lower-priority shadow of Harness's built-in assistant cell. */
 export function registerCodexAssistantRenderer(ctx: ClientContext): void {
-  ctx.effect(() => {
-    const style = document.createElement('style')
-    style.dataset.dshCodexAssistant = ''
-    style.textContent = assistantStyleText
-    document.head.append(style)
-    return () => { style.remove() }
-  }, 'dsh-openai-codex: assistant renderer styles')
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node',
     key: 'assistant-step',

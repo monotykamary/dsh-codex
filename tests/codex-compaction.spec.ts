@@ -3,16 +3,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { zstdDecompressSync } from 'node:zlib'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@monotykamary/cordis'
 import {
   BlockAssembler,
   CallId,
   createAssistantMessage,
   createToolResultMessage,
   createUserMessage,
-} from '@deepseek-ai/dsh-llm'
-import LlmRuntime from '@deepseek-ai/dsh-llm'
-import WebRuntime from '@deepseek-ai/dsh-web'
+} from '@monotykamary/dsh-llm'
+import LlmRuntime from '@monotykamary/dsh-llm'
+import WebRuntime from '@monotykamary/dsh-web'
 import * as OpenAICodex from '../src/index.ts'
 
 let context: Context | undefined

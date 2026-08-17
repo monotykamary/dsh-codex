@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { SettingsProvider } from '@deepseek-ai/dsh-settings'
-import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
+import { Context } from '@monotykamary/cordis'
+import { SettingsProvider } from '@monotykamary/dsh-settings'
+import type { SettingsNamespace } from '@monotykamary/dsh-settings'
 import { ImageToolPolicy } from '../src/tool-policy.ts'
 
 class MemorySettings extends SettingsProvider {

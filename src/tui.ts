@@ -2,9 +2,9 @@
 
 import { spawn } from 'node:child_process'
 import type { AuthEvent, AuthPrompt } from '@earendil-works/pi-ai'
-import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-commands'
-import type { CommandResult } from '@deepseek-ai/dsh-commands'
+import type { Context } from '@monotykamary/cordis'
+import type {} from '@monotykamary/dsh-commands'
+import type { CommandResult } from '@monotykamary/dsh-commands'
 import type { OpenAICodexService } from './service.ts'
 import type { OpenAICodexUsage } from './usage.ts'
 
@@ -32,7 +32,7 @@ interface TuiContext extends Context {
   tuiCommandTrees: TuiCommandTreeRuntime
 }
 
-declare module '@deepseek-ai/cordis' {
+declare module '@monotykamary/cordis' {
   interface Context {
     /** Empty marker published while the Codex terminal adapter is active. */
     openAICodexTui: object

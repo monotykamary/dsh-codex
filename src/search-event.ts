@@ -1,14 +1,14 @@
 /** Durable request event owned by the OpenAI Codex search provider. */
 
-import type { Context } from '@deepseek-ai/cordis'
-import { KNOWN_SESSION_EVENT_TYPES } from '@deepseek-ai/dsh-session'
-import type {} from '@deepseek-ai/dsh-agent'
+import type { Context } from '@monotykamary/cordis'
+import { KNOWN_SESSION_EVENT_TYPES } from '@monotykamary/dsh-session'
+import type {} from '@monotykamary/dsh-agent'
 import type { OpenAICodexSearchRequestRecord } from './search.ts'
 
 /** Dedicated log event written before an OpenAI Codex search dispatch. */
 export const OPENAI_CODEX_SEARCH_MODEL_REQUEST_EVENT = 'web/openai-codex-search-llm-request'
 
-declare module '@deepseek-ai/dsh-session/types' {
+declare module '@monotykamary/dsh-session/types' {
   interface SessionEventMap {
     /** Exact secret-free OpenAI Codex standalone-search request. */
     'web/openai-codex-search-llm-request': OpenAICodexSearchRequestRecord

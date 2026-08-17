@@ -2,10 +2,10 @@ import { randomUUID } from 'node:crypto'
 import { link, lstat, mkdir, open, rename, rm } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Context } from '@deepseek-ai/cordis'
-import { FsError } from '@deepseek-ai/dsh-fs'
-import type { FileSystem, FsTarget, FsVersion, FsWriteIntent } from '@deepseek-ai/dsh-fs'
-import type { ToolExecution } from '@deepseek-ai/dsh-tools'
+import type { Context } from '@monotykamary/cordis'
+import { FsError } from '@monotykamary/dsh-fs'
+import type { FileSystem, FsTarget, FsVersion, FsWriteIntent } from '@monotykamary/dsh-fs'
+import type { ToolExecution } from '@monotykamary/dsh-tools'
 
 /** Result returned by binary publication. */
 export interface FsBytesWriteOutcome {

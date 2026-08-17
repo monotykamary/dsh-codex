@@ -7,8 +7,8 @@ export default defineConfig({
     server: {
       deps: {
         inline: [
-          '@deepseek-ai/dsh-client-ui-attachment',
-          '@deepseek-ai/dsh-client-ui-primitives',
+          '@monotykamary/dsh-client-ui-attachment',
+          '@monotykamary/dsh-client-ui-primitives',
         ],
       },
     },

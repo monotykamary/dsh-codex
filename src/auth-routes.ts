@@ -2,8 +2,8 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { AuthEvent, AuthPrompt } from '@earendil-works/pi-ai'
-import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-host-webserver'
+import type { Context } from '@monotykamary/cordis'
+import type {} from '@monotykamary/dsh-host-webserver'
 import { loginOpenAICodex, logoutOpenAICodex, openAICodexAuthStatus } from './auth.ts'
 import type { OpenAICodexCredentialStore } from './store.ts'
 import type { ImageToolPolicy, ImageToolPreferences, ResponseApiPreferences } from './tool-policy.ts'

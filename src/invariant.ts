@@ -3,8 +3,8 @@
  * @module dsh-codex/invariant
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@monotykamary/cordis'
+import type { InvariantInstaller } from '@monotykamary/dsh-invariants'
 
 const PACKAGE_NAME = 'dsh-codex'
 

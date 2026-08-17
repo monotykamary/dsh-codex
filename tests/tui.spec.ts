@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import CommandRuntime from '@deepseek-ai/dsh-commands'
-import type { CommandDefinition } from '@deepseek-ai/dsh-commands'
+import { Context } from '@monotykamary/cordis'
+import CommandRuntime from '@monotykamary/dsh-commands'
+import type { CommandDefinition } from '@monotykamary/dsh-commands'
 import type { OpenAICodexService } from '../src/service.ts'
 import * as TuiAdapter from '../src/tui.ts'
 
