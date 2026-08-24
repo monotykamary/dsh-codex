@@ -16,6 +16,13 @@ import type { ResponseApiPreferences } from './tool-policy.ts'
 /** Provider idle ceiling used by the composite route. */
 export const OPENAI_CODEX_STREAM_IDLE_TIMEOUT_MS = 300_000
 
+/** Complete request-image limits required by the generic pi-ai adapter. */
+export const OPENAI_CODEX_REQUEST_IMAGE_LIMITS = {
+  maxRequestImageBytes: 20 * 1024 * 1024,
+  requestImagePixelBudget: 2048 * 2048,
+  requestImageMaxBytes: 1024 * 1024,
+} as const
+
 /**
  * Give the generic dsh adapter a request-scoped bearer-token entry without
  * changing the provider's user-facing OAuth flow. The resolver accepts only
@@ -80,12 +87,20 @@ export function createOpenAICodexAdapter(
     streamIdleTimeoutMs: OPENAI_CODEX_STREAM_IDLE_TIMEOUT_MS,
     retryPolicy: resolveRetryPolicy(undefined, 'dsh-openai-codex retryPolicy'),
     configuredMaxTokens: new Map(),
+    ...OPENAI_CODEX_REQUEST_IMAGE_LIMITS,
     piProvider: responses.wrap(requestProvider(provider)),
   }]])
   const models: MutableModels = createModels({ credentials })
   models.setProvider(provider)
   return new OpenAICodexAdapter({
     profiles: () => profiles,
+    auth: {
+      credentials,
+      authContext: {
+        env: () => Promise.resolve(undefined),
+        fileExists: () => Promise.resolve(false),
+      },
+    },
     resolveApiKey: async () => (await models.getAuth(OPENAI_CODEX_PROVIDER))?.auth.apiKey,
     resolveAttachments,
   }, responses)
