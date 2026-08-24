@@ -89,6 +89,7 @@
     "@monotykamary/dsh-web": "link:../deepseek-harness/packages/web/web",
     "@monotykamary/schemastery": "link:../deepseek-harness/vendor/schemastery",
     "@earendil-works/pi-ai": "^0.82.1",
+    "dsh-multiprovider": "^0.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -125,6 +126,7 @@
     "@monotykamary/dsh-web": "link:../deepseek-harness/packages/web/web",
     "@monotykamary/schemastery": "link:../deepseek-harness/vendor/schemastery",
     "@earendil-works/pi-ai": "0.82.1",
+    "dsh-multiprovider": "link:../dsh-multiprovider",
     "@testing-library/react": "16.3.0",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",

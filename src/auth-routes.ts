@@ -1,45 +1,48 @@
 /** Same-origin Web settings routes for OpenAI Codex OAuth. */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { dirname } from 'node:path'
 import type { AuthEvent, AuthPrompt } from '@earendil-works/pi-ai'
 import type { Context } from '@monotykamary/cordis'
 import type {} from '@monotykamary/dsh-host-webserver'
-import { loginOpenAICodex, logoutOpenAICodex, openAICodexAuthStatus } from './auth.ts'
+import { loginOpenAICodex } from './auth.ts'
+import { OpenAICodexAccounts } from './accounts.ts'
+import type { PendingOpenAICodexAccount } from './accounts.ts'
 import type { OpenAICodexCredentialStore } from './store.ts'
 import type { ImageToolPolicy, ImageToolPreferences, ResponseApiPreferences } from './tool-policy.ts'
 import { readOpenAICodexRateLimits } from './usage.ts'
 import type { OpenAICodexUsage } from './usage.ts'
 
-/** Plugin-owned status endpoint consumed by its browser half. */
 export const OPENAI_CODEX_AUTH_STATUS_PATH = '/plugins/dsh-openai-codex/auth/status'
-/** Plugin-owned browser-login endpoint consumed by its browser half. */
 export const OPENAI_CODEX_AUTH_LOGIN_PATH = '/plugins/dsh-openai-codex/auth/login'
-/** Plugin-owned logout endpoint consumed by its browser half. */
 export const OPENAI_CODEX_AUTH_LOGOUT_PATH = '/plugins/dsh-openai-codex/auth/logout'
-/** Plugin-owned image-tool preference endpoint consumed by its browser half. */
 export const OPENAI_CODEX_IMAGE_TOOL_SETTINGS_PATH = '/plugins/dsh-openai-codex/image-tools'
-/** Plugin-owned Responses API experiment endpoint consumed by its browser half. */
 export const OPENAI_CODEX_RESPONSE_API_SETTINGS_PATH = '/plugins/dsh-openai-codex/response-api'
 
-export type OpenAICodexWebAuthStatus =
-  | { status: 'signed-out' }
-  | { status: 'signing-in' }
-  | { status: 'signed-in'; usage: OpenAICodexUsage; quotaError?: string }
-  | { status: 'error'; message: string }
-
-interface LoginChallenge {
-  url: string
+export interface OpenAICodexWebAccountStatus {
+  id: string
+  label: string
+  expiresAt: string
+  legacy: boolean
+  usage: OpenAICodexUsage
+  quotaError?: string
 }
 
-/** Redact provider diagnostics before they cross to the browser. */
+export type OpenAICodexWebAuthStatus =
+  | { status: 'signed-out'; accounts: [] }
+  | { status: 'signing-in'; accounts: OpenAICodexWebAccountStatus[] }
+  | { status: 'signed-in'; accounts: OpenAICodexWebAccountStatus[] }
+  | { status: 'error'; accounts: OpenAICodexWebAccountStatus[]; message: string }
+
+interface LoginChallenge { url: string }
+
 function safeMessage(error: unknown): string {
   return (error instanceof Error ? error.message : String(error))
-    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/gu, '[redacted token]')
-    .replace(/(\b(?:code|token|refresh_token|access_token)=)[^&\s]+/giu, '$1[redacted]')
+    .replace(/eyJ[A-Za-z0-9_-]+[.][A-Za-z0-9_-]+[.][A-Za-z0-9_-]+/gu, '[redacted token]')
+    .replace(/((?:code|token|refresh_token|access_token)=)[^&\s]+/giu, '$1[redacted]')
     .slice(0, 1000)
 }
 
-/** Reject with the prompt's abort reason while browser callback owns completion. */
 function waitForPromptAbort(prompt: AuthPrompt): Promise<string> {
   const signal = prompt.signal
   if (signal === undefined) return new Promise<string>(() => {})
@@ -49,68 +52,73 @@ function waitForPromptAbort(prompt: AuthPrompt): Promise<string> {
   })
 }
 
-/** One lifecycle owner for the callback server, challenge, and public status. */
+/** Owns one in-progress browser login while preserving every already enrolled account. */
 export class OpenAICodexWebAuth {
-  private state: OpenAICodexWebAuthStatus = { status: 'signed-out' }
+  private state: OpenAICodexWebAuthStatus = { status: 'signed-out', accounts: [] }
   private operation: Promise<void> | undefined
   private cancellation: AbortController | undefined
   private challenge: LoginChallenge | undefined
+  private pending: PendingOpenAICodexAccount | undefined
   private challengeWaiters: Array<{ resolve(value: LoginChallenge): void; reject(error: unknown): void }> = []
 
-  constructor(private readonly store: OpenAICodexCredentialStore) {}
+  private readonly accounts: OpenAICodexAccounts
 
-  /** Read current public state, consulting durable storage while idle. */
+  constructor(accounts: OpenAICodexAccounts | OpenAICodexCredentialStore) {
+    this.accounts = 'beginLogin' in accounts ? accounts : new OpenAICodexAccounts(dirname(accounts.filename), accounts)
+  }
+
   async status(): Promise<OpenAICodexWebAuthStatus> {
     if (this.operation !== undefined) return this.state
     if (this.state.status === 'error') return this.state
     return this.readStoredStatus()
   }
 
-  /** Start or join the current browser-login operation. */
   async signIn(): Promise<LoginChallenge> {
-    if (this.operation === undefined) this.start()
+    if (this.operation === undefined) await this.start()
     if (this.challenge !== undefined) return this.challenge
-    return new Promise<LoginChallenge>((resolve, reject) => {
-      this.challengeWaiters.push({ resolve, reject })
-    })
+    return new Promise<LoginChallenge>((resolve, reject) => { this.challengeWaiters.push({ resolve, reject }) })
   }
 
-  /** Cancel any callback listener, wait for quiescence, then delete the credential. */
-  async signOut(): Promise<void> {
+  async signOut(accountId?: string): Promise<void> {
     this.cancellation?.abort(new Error('OpenAI Codex sign-in cancelled'))
     await this.operation?.catch(() => undefined)
-    await logoutOpenAICodex(this.store)
-    this.state = { status: 'signed-out' }
+    if (accountId === undefined) await this.accounts.removeAll()
+    else await this.accounts.remove(accountId)
+    this.state = await this.readStoredStatus()
   }
 
-  /** Stop the owned callback listener during plugin disposal. */
   async dispose(): Promise<void> {
     this.cancellation?.abort(new Error('OpenAI Codex plugin disposed'))
     await this.operation?.catch(() => undefined)
   }
 
-  private start(): void {
+  private async start(): Promise<void> {
     const cancellation = new AbortController()
+    const pending = await this.accounts.beginLogin()
     this.cancellation = cancellation
+    this.pending = pending
     this.challenge = undefined
-    this.state = { status: 'signing-in' }
+    const existing = await this.readStoredStatus()
+    this.state = { status: 'signing-in', accounts: existing.accounts }
     this.operation = loginOpenAICodex({
       signal: cancellation.signal,
-      prompt: prompt => prompt.type === 'select'
-        ? Promise.resolve('browser')
-        : waitForPromptAbort(prompt),
+      prompt: prompt => prompt.type === 'select' ? Promise.resolve('browser') : waitForPromptAbort(prompt),
       notify: event => { this.onEvent(event) },
-    }, this.store).then(
+    }, pending.store).then(
       async () => {
+        await this.accounts.commitLogin(pending)
         this.state = await this.readStoredStatus()
       },
-      (error: unknown) => {
+      async (error: unknown) => {
+        await this.accounts.discardLogin(pending).catch(() => undefined)
         this.rejectChallenge(error)
-        this.state = { status: 'error', message: safeMessage(error) }
+        const stored = await this.readStoredStatus().catch((): OpenAICodexWebAuthStatus => ({ status: 'signed-out', accounts: [] }))
+        this.state = { status: 'error', accounts: stored.accounts, message: safeMessage(error) }
       },
     ).finally(() => {
       this.operation = undefined
       this.cancellation = undefined
+      this.pending = undefined
     })
   }
 
@@ -129,13 +137,22 @@ export class OpenAICodexWebAuth {
   }
 
   private async readStoredStatus(): Promise<OpenAICodexWebAuthStatus> {
-    const stored = await openAICodexAuthStatus(this.store)
-    if (!stored.authenticated) return { status: 'signed-out' }
-    try {
-      return { status: 'signed-in', usage: await readOpenAICodexRateLimits(this.store) }
-    } catch (error: unknown) {
-      return { status: 'signed-in', usage: { rateLimits: [] }, quotaError: safeMessage(error) }
-    }
+    const stored = await this.accounts.list()
+    if (stored.length === 0) return { status: 'signed-out', accounts: [] }
+    const accounts = await Promise.all(stored.map(async account => {
+      try {
+        return {
+          id: account.id, label: account.label, expiresAt: account.expiresAt.toISOString(), legacy: account.legacy,
+          usage: await readOpenAICodexRateLimits(account.store),
+        }
+      } catch (error: unknown) {
+        return {
+          id: account.id, label: account.label, expiresAt: account.expiresAt.toISOString(), legacy: account.legacy,
+          usage: { rateLimits: [] }, quotaError: safeMessage(error),
+        }
+      }
+    }))
+    return { status: 'signed-in', accounts }
   }
 
   private rejectChallenge(error: unknown): void {
@@ -218,10 +235,11 @@ function responseApiPatch(value: Record<string, unknown>): Partial<ResponseApiPr
 /** Register the plugin-owned OAuth routes when the Web server is composed. */
 export function registerOpenAICodexAuthRoutes(
   ctx: Context,
-  store: OpenAICodexCredentialStore,
+  accounts: OpenAICodexAccounts | OpenAICodexCredentialStore,
   imageTools: ImageToolPolicy,
 ): void {
-  const auth = new OpenAICodexWebAuth(store)
+  const registry = 'beginLogin' in accounts ? accounts : new OpenAICodexAccounts(dirname(accounts.filename), accounts)
+  const auth = new OpenAICodexWebAuth(registry)
   ctx.effect(() => {
     const routes = [
       ctx.webServer.register({
@@ -252,8 +270,19 @@ export function registerOpenAICodexAuthRoutes(
         handler: async (req, res) => {
           if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
           if (!trustedRequest(req)) return json(res, 403, { error: 'forbidden' })
-          await auth.signOut()
-          json(res, 200, { ok: true })
+          try {
+            let accountId: string | undefined
+            if (req.headers['content-length'] !== undefined && req.headers['content-length'] !== '0') {
+              const body = await readJson(req)
+              if (Object.keys(body).some(key => key !== 'accountId')) throw new Error('request contains an unknown field')
+              if (typeof body['accountId'] !== 'string' || body['accountId'].length === 0) throw new Error('accountId must be a non-empty string')
+              accountId = body['accountId']
+            }
+            await auth.signOut(accountId)
+            json(res, 200, { ok: true })
+          } catch (error: unknown) {
+            json(res, 400, { error: safeMessage(error) })
+          }
         },
       }),
       ctx.webServer.register({

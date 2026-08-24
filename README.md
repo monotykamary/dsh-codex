@@ -6,7 +6,7 @@ Use a ChatGPT subscription in [DeepSeek Harness](https://github.com/deepseek-ai/
 
 `dsh-codex` is an independent dsh bundle. It adds:
 
-- ChatGPT OAuth from the dsh Settings panel or a standalone CLI, with automatic token refresh
+- multiple ChatGPT OAuth accounts from dsh Settings, with automatic token refresh and account-aware scheduling
 - the Codex GPT catalog, including vision-capable models when the account offers them
 - streaming, tool calls, reasoning replay, prompt caching, and dsh compaction through the normal LLM service
 - Codex standalone web search through dsh's existing `web_search` tool
@@ -27,7 +27,7 @@ dsh web
 
 From a DeepSeek Harness source checkout, use `pnpm dsh plugin --profile web add dsh-codex`. A local plugin checkout can still be installed with `link:/absolute/path/to/dsh-codex` for development.
 
-Open **Settings → OpenAI Codex → Sign in with ChatGPT**. The plugin opens OpenAI's authorization page and completes the localhost callback. The account page shows live Codex quota bars and exact remaining percentages; exact credit balances or workspace limits appear only when the account API supplies them.
+Open **Settings → OpenAI Codex → Add ChatGPT account**. Each authorization adds or refreshes one account without signing out the others. The account page lists every account separately, supports targeted removal, and shows each account's live Codex quota bars and exact remaining percentages; exact credit balances or workspace limits appear only when the account API supplies them. Requests are leased through `dsh-multiprovider`, with session affinity and health-aware cooldowns so one exhausted or failing account does not disable the others.
 
 The CLI remains available for terminal and headless installations:
 
@@ -44,7 +44,7 @@ For `dsh-tui`, install the bundle into the same profile:
 dsh plugin --profile dsh-tui add dsh-codex
 ```
 
-After restarting the TUI, `/model` lists the `openai-codex` catalog. With no explicit route or saved selection, the TUI adopts the bundle's `gpt-5.6-sol` default. Use `/codex status|login|logout|usage|config` for the account and live settings; the four boolean settings can be changed with `/codex set <read-image|imagegen-other-models|websocket-context|native-compaction> <on|off>`. Browser login shares the same dsh credential file used by the Web profile.
+After restarting the TUI, `/model` lists the `openai-codex` catalog. With no explicit route or saved selection, the TUI adopts the bundle's `gpt-5.6-sol` default. Use `/codex status|login|logout|usage|config` for the compatibility account and live settings; the four boolean settings can be changed with `/codex set <read-image|imagegen-other-models|websocket-context|native-compaction> <on|off>`. The Settings page is the multi-account management surface; the CLI compatibility account participates in the same request pool.
 
 Codex, Claude Code, and other automation agents should follow [INSTALL.md](INSTALL.md). It is a complete, idempotent runbook and does not require reading this repository's source or design notes.
 
@@ -101,12 +101,13 @@ The switches are independent. Every ordinary Codex request keeps `store: false`;
 
 dsh keeps this login separate from Codex CLI/Desktop:
 
-- credentials are stored at `$DSH_HOME/.openai-codex-auth.json` (`~/.dsh` by default);
+- the CLI compatibility account remains at `$DSH_HOME/.openai-codex-auth.json` (`~/.dsh` by default);
+- additional accounts use owner-only files under `$DSH_HOME/openai-codex-accounts/`, named by a one-way stable account identifier;
 - writes are atomic and token refresh is locked across local dsh processes;
 - browser status and diagnostics never return token values;
 - `~/.codex/auth.json` is never copied or modified.
 
-Keeping the stores separate prevents two clients from racing the same rotating refresh token. Removing the bundle does not delete the credential; use the account page or `logout` command when the local account should be removed.
+Each account has its own credential store and lease, preventing two requests from racing the same rotating refresh token. Scheduler state and browser responses contain only stable ids, labels, health, and quota metadata—not credentials. Removing the bundle does not delete credentials; use targeted removal in Settings or `logout` for the CLI compatibility account.
 
 ## Compatibility notes
 

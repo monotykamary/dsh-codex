@@ -13,6 +13,7 @@ import type { ContentBlock, Message } from '@monotykamary/dsh-llm'
 import { defineTool } from '@monotykamary/dsh-tools'
 import type { ToolDefinition, ToolExecution } from '@monotykamary/dsh-tools'
 import type { OpenAICodexCredentialStore } from './store.ts'
+import type { OpenAICodexAccountPool, OpenAICodexAccountLease } from './account-pool.ts'
 import { OPENAI_CODEX_PROVIDER } from './store.ts'
 import { OPENAI_CODEX_BASE_URL } from './search.ts'
 import { writeWorkspaceBytes } from './binary-fs.ts'
@@ -293,10 +294,9 @@ function parseArgs(args: ImagegenArgs): Required<Pick<ImagegenArgs, 'prompt'>> &
 /** Build the plugin-owned Codex image generation and editing tool. */
 export function imagegenTool(
   ctx: Context,
-  credentials: OpenAICodexCredentialStore,
+  credentials: OpenAICodexCredentialStore | OpenAICodexAccountPool,
   policy: ImageToolPolicy,
 ): ToolDefinition {
-  const client = new OpenAICodexImageClient(credentials)
   return defineTool({
     name: IMAGEGEN_TOOL_NAME,
     description: 'Generate or edit an image with gpt-image-2. Omit both reference fields for a new image. Use referenced_image_paths for workspace files, or num_last_images_to_include for attached, viewed, or previously generated conversation images. Never provide both. Multiple images keep chronological/path-array order; identify them as Image 1, Image 2, and so on in the prompt. The generated PNG is always saved in the active local or Remote SSH workspace; output_path chooses its location, otherwise a unique generated-<timestamp>-<id>.png name is used.',
@@ -348,7 +348,17 @@ export function imagegenTool(
         : args.num_last_images_to_include !== undefined
           ? await conversationImages(ctx, exec, args.num_last_images_to_include)
           : []
-      const data = await client.generate(args.prompt, images, exec.signal)
+      let lease: OpenAICodexAccountLease | undefined
+      let data: Uint8Array
+      try {
+        if ('acquire' in credentials) lease = await credentials.acquire(exec.agent?.session.header.id)
+        const store = lease?.credentialRef ?? credentials as OpenAICodexCredentialStore
+        data = await new OpenAICodexImageClient(store).generate(args.prompt, images, exec.signal)
+        lease?.release({ status: 'success' })
+      } catch (error: unknown) {
+        lease?.release(exec.signal.aborted ? { status: 'cancelled' } : { status: 'failure', error })
+        throw error
+      }
       const mediaType = imageMediaType(data)
       if (mediaType !== 'image/png') throw new Error('OpenAI Codex image response was not a PNG')
       const ref = await ctx.attachments.saveImage({ data, mediaType, name: 'generated.png' })

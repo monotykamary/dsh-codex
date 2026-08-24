@@ -15,12 +15,21 @@ const RESPONSE_API_PATH = '/plugins/dsh-openai-codex/response-api'
 const POLL_INTERVAL_MS = 1_000
 const USAGE_POLL_INTERVAL_MS = 60_000
 
+interface CodexAccountStatus {
+  id: string
+  label: string
+  expiresAt: string
+  legacy: boolean
+  usage: OpenAICodexUsage
+  quotaError?: string
+}
+
 type AccountStatus =
   | { status: 'loading' }
-  | { status: 'signed-out' }
-  | { status: 'signing-in' }
-  | { status: 'signed-in'; usage: OpenAICodexUsage; quotaError?: string }
-  | { status: 'error'; message: string }
+  | { status: 'signed-out'; accounts: CodexAccountStatus[] }
+  | { status: 'signing-in'; accounts: CodexAccountStatus[] }
+  | { status: 'signed-in'; accounts: CodexAccountStatus[] }
+  | { status: 'error'; accounts: CodexAccountStatus[]; message: string }
 
 interface LoginChallenge {
   url: string
@@ -238,7 +247,11 @@ export function OpenAICodexSettings({ t }: OpenAICodexSettingsProps) {
     try {
       setStatus(await jsonRequest<AccountStatus>(STATUS_PATH))
     } catch (error: unknown) {
-      setStatus({ status: 'error', message: error instanceof Error ? error.message : t('requestFailed') })
+      setStatus(previous => ({
+        status: 'error',
+        accounts: 'accounts' in previous ? previous.accounts : [],
+        message: error instanceof Error ? error.message : t('requestFailed'),
+      }))
     }
   }, [t])
 
@@ -268,29 +281,37 @@ export function OpenAICodexSettings({ t }: OpenAICodexSettingsProps) {
     const popup = window.open('about:blank', '_blank')
     if (popup !== null) popup.opener = null
     setBusy(true)
-    setStatus({ status: 'signing-in' })
+    setStatus(previous => ({ status: 'signing-in', accounts: 'accounts' in previous ? previous.accounts : [] }))
     try {
       const challenge = await jsonRequest<LoginChallenge>(LOGIN_PATH, 'POST')
       if (popup === null) {
-        setStatus({ status: 'error', message: t('popupBlocked') })
+        setStatus(previous => ({ status: 'error', accounts: 'accounts' in previous ? previous.accounts : [], message: t('popupBlocked') }))
         return
       }
       popup.location.replace(challenge.url)
     } catch (error: unknown) {
       popup?.close()
-      setStatus({ status: 'error', message: error instanceof Error ? error.message : t('requestFailed') })
+      setStatus(previous => ({
+        status: 'error',
+        accounts: 'accounts' in previous ? previous.accounts : [],
+        message: error instanceof Error ? error.message : t('requestFailed'),
+      }))
     } finally {
       setBusy(false)
     }
   }
 
-  const signOut = async (): Promise<void> => {
+  const signOut = async (accountId: string): Promise<void> => {
     setBusy(true)
     try {
-      await jsonRequest<{ ok: true }>(LOGOUT_PATH, 'POST')
-      setStatus({ status: 'signed-out' })
+      await jsonRequest<{ ok: true }>(LOGOUT_PATH, 'POST', { accountId })
+      await refresh()
     } catch (error: unknown) {
-      setStatus({ status: 'error', message: error instanceof Error ? error.message : t('requestFailed') })
+      setStatus(previous => ({
+        status: 'error',
+        accounts: 'accounts' in previous ? previous.accounts : [],
+        message: error instanceof Error ? error.message : t('requestFailed'),
+      }))
     } finally {
       setBusy(false)
     }
@@ -342,20 +363,34 @@ export function OpenAICodexSettings({ t }: OpenAICodexSettingsProps) {
             <span aria-hidden="true" style={dotStyle(status.status)} />
             <span>{label}</span>
           </div>
-          {status.status === 'loading'
-            ? null
-            : status.status === 'signed-in'
-            ? <button type="button" style={buttonStyle} disabled={busy} onClick={() => { void signOut() }}>{busy ? t('working') : t('logout')}</button>
-            : <button type="button" style={primaryButtonStyle} disabled={busy} onClick={() => { void signIn() }}>{busy ? t('working') : status.status === 'error' ? t('loginAgain') : t('login')}</button>}
+          {status.status === 'loading' ? null : (
+            <button type="button" style={primaryButtonStyle} disabled={busy || status.status === 'signing-in'} onClick={() => { void signIn() }}>
+              {busy ? t('working') : status.status === 'signing-in' ? t('signingIn') : t('addAccount')}
+            </button>
+          )}
         </div>
         {status.status === 'error' ? <p style={errorStyle}>{status.message}</p> : null}
-        {status.status === 'signed-in'
-          ? <UsageLimits
-              usage={status.usage}
-              {...status.quotaError === undefined ? {} : { quotaError: status.quotaError }}
+        {'accounts' in status && status.accounts.length === 0 && status.status !== 'signing-in'
+          ? <p style={bodyStyle}>{t('noAccounts')}</p>
+          : null}
+        {'accounts' in status ? status.accounts.map(account => (
+          <div key={account.id} style={{ ...cardStyle, padding: '14px 16px', background: 'var(--dsw-alias-bg-layer-1)' }}>
+            <div style={rowStyle}>
+              <div>
+                <div style={statusStyle}>{account.label}</div>
+                <p style={bodyStyle}>{t('accountExpires', { date: new Date(account.expiresAt).toLocaleString() })}{account.legacy ? ` · ${t('legacyAccount')}` : ''}</p>
+              </div>
+              <button type="button" style={buttonStyle} disabled={busy} onClick={() => { void signOut(account.id) }}>
+                {busy ? t('working') : t('logout')}
+              </button>
+            </div>
+            <UsageLimits
+              usage={account.usage}
+              {...account.quotaError === undefined ? {} : { quotaError: account.quotaError }}
               t={t}
             />
-          : null}
+          </div>
+        )) : null}
       </div>
       <div style={cardStyle}>
         <div>

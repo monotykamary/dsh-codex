@@ -3,12 +3,10 @@ import { memo, useEffect, useInsertionEffect, useMemo, useRef, useState } from '
 import type { ReactNode } from 'react'
 import type { AssistantBlock, ClientContext } from '@monotykamary/dsh-client-runtime/client'
 import type {
-  ChatNodeViewProps, ChatViewSlotProps, TurnTailOwnerProps,
+  ChatNodeViewProps, ChatViewSlotProps, RenderMessageImages, TurnTailOwnerProps,
 } from '@monotykamary/dsh-client-ui-conversation/client'
-import { ImageGallery } from '@monotykamary/dsh-client-ui-attachment'
-import type { ImageLoader, MessageImageLabels } from '@monotykamary/dsh-client-ui-attachment'
 import {
-  DisclosureRow, extractMarkdownPlainText, IconThinkOutline14, JsonBlock, MarkdownText,
+  Brain, DisclosureRow, extractMarkdownPlainText, JsonBlock, MarkdownText,
 } from '@monotykamary/dsh-client-ui-primitives'
 import type { MarkdownFileMentions } from '@monotykamary/dsh-client-ui-primitives'
 import { assistantCss as css, assistantStyleText } from './CodexAssistantStyles.ts'
@@ -75,7 +73,7 @@ export function CodexReasoningRow({ text, running, t }: {
         leadingClassName={css.leading}
         titleClassName={css.title}
         chevronClassName={css.chevron}
-        icon={<IconThinkOutline14 size={14} />}
+        icon={<Brain size={14} />}
         title="Think"
         open={expanded}
         expandable
@@ -96,34 +94,21 @@ export function CodexReasoningRow({ text, running, t }: {
   )
 }
 
-function imageLabels(t: ChatViewSlotProps['t']): MessageImageLabels {
-  return {
-    image: t('image.label'),
-    open: t('image.openOriginal'),
-    openNamed: label => t('image.openOriginalLabel', { label }),
-    loading: t('image.loading'),
-    loadFailed: t('image.loadFailed'),
-    lightbox: { dialog: t('image.preview'), close: t('image.closePreview') },
-  }
-}
-
 interface AssistantBodyProps {
   blocks: readonly AssistantBlock[]
   streaming: boolean
   interrupted?: boolean | undefined
-  loadImage?: ImageLoader
+  renderMessageImages?: RenderMessageImages
   mentions?: MarkdownFileMentions | undefined
   t: ChatViewSlotProps['t']
 }
 
 /** Upstream-shaped block bridge, composed from public Harness UI primitives. */
 export const CodexAssistantBody = memo(function CodexAssistantBody({
-  blocks, streaming, interrupted, loadImage, mentions, t,
+  blocks, streaming, interrupted, renderMessageImages, mentions, t,
 }: AssistantBodyProps) {
   useAssistantStyles()
-  const imageLoader = loadImage ?? (() => Promise.reject(new Error(t('image.serviceUnavailable'))))
   const codeLabels = useMemo(() => ({ copyLabel: t('copy'), copiedLabel: t('copied') }), [t])
-  const labels = useMemo(() => imageLabels(t), [t])
   const last = blocks.length - 1
   const hasVisible = streaming || interrupted === true || blocks.some(block => block.kind !== 'tool-call')
   if (!hasVisible) return null
@@ -156,7 +141,7 @@ export const CodexAssistantBody = memo(function CodexAssistantBody({
           group.push(next)
           i += 1
         }
-        rendered.push(<ImageGallery key={start} images={group} load={imageLoader} align="start" labels={labels} />)
+        if (renderMessageImages !== undefined) rendered.push(<span key={start}>{renderMessageImages({ images: group, align: 'start' })}</span>)
         break
       }
       case 'tool-call':
@@ -195,7 +180,7 @@ export function registerCodexAssistantRenderer(ctx: ClientContext): void {
 
 /** Slot-level bridge retaining Harness turn-tail mention behavior. */
 export const CodexAssistantNodeView = memo(function CodexAssistantNodeView({
-  node, useTurnData, openFile, loadImage, fileMentions, t,
+  node, useTurnData, openFile, renderMessageImages, fileMentions, t,
 }: ChatNodeViewProps<'assistant-step'>) {
   const data = node.data
   const turn = node.location.kind === 'turn' || node.location.kind === 'step'
@@ -217,7 +202,7 @@ export const CodexAssistantNodeView = memo(function CodexAssistantNodeView({
       blocks={data.blocks}
       streaming={data.status === 'running'}
       interrupted={data.status === 'interrupted'}
-      loadImage={loadImage}
+      renderMessageImages={renderMessageImages}
       mentions={mentions}
       t={t}
     />

@@ -3,13 +3,14 @@
 import { createModels } from '@earendil-works/pi-ai'
 import type { MutableModels, Provider } from '@earendil-works/pi-ai'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
-import { resolveRetryPolicy } from '@monotykamary/dsh-llm'
-import type { GenerateOptions, StreamChunk } from '@monotykamary/dsh-llm'
+import { LlmAdapter, resolveRetryPolicy } from '@monotykamary/dsh-llm'
+import type { GenerateOptions, LlmModelInfo, LlmProviderInfo, LlmResolvedModelInfo, PreparedAdapterCall, ResolvedRetryPolicy, StreamChunk } from '@monotykamary/dsh-llm'
 import { PiAiAdapter } from '@monotykamary/dsh-llm-pi-ai'
 import type { ResolvedPiAiProviderProfile } from '@monotykamary/dsh-llm-pi-ai'
 import type { AttachmentStore } from '@monotykamary/dsh-attachment'
 import type { OpenAICodexCredentialStore } from './store.ts'
 import { OPENAI_CODEX_PROVIDER } from './store.ts'
+import type { OpenAICodexAccountPool } from './account-pool.ts'
 import { OpenAICodexResponseRuntime } from './responses.ts'
 import type { ResponseApiPreferences } from './tool-policy.ts'
 
@@ -74,7 +75,7 @@ class OpenAICodexAdapter extends PiAiAdapter {
  * resolution, streaming, and reasoning metadata. This plugin adds optional
  * Codex-native request state/compaction and supplies the provider OAuth token.
  */
-export function createOpenAICodexAdapter(
+function createSingleOpenAICodexAdapter(
   credentials: OpenAICodexCredentialStore,
   resolveAttachments: () => AttachmentStore | undefined,
   responsePreferences: () => ResponseApiPreferences,
@@ -104,4 +105,69 @@ export function createOpenAICodexAdapter(
     resolveApiKey: async () => (await models.getAuth(OPENAI_CODEX_PROVIDER))?.auth.apiKey,
     resolveAttachments,
   }, responses)
+}
+
+/** Route complete streams through one leased account without sharing response state across accounts. */
+class PooledOpenAICodexAdapter extends LlmAdapter {
+  private readonly adapters = new Map<string, PiAiAdapter>()
+  private readonly catalog: PiAiAdapter
+
+  constructor(
+    private readonly pool: OpenAICodexAccountPool,
+    private readonly resolveAttachments: () => AttachmentStore | undefined,
+    private readonly responsePreferences: () => ResponseApiPreferences,
+  ) {
+    super()
+    this.catalog = createSingleOpenAICodexAdapter(pool.accounts.legacyStore, resolveAttachments, responsePreferences)
+  }
+
+  private adapter(store: OpenAICodexCredentialStore): PiAiAdapter {
+    let adapter = this.adapters.get(store.filename)
+    if (adapter === undefined) {
+      adapter = createSingleOpenAICodexAdapter(store, this.resolveAttachments, this.responsePreferences)
+      this.adapters.set(store.filename, adapter)
+    }
+    return adapter
+  }
+
+  override providerInfo(provider: string): LlmProviderInfo { return this.catalog.providerInfo(provider) }
+  override providerRetryPolicy(provider: string): ResolvedRetryPolicy | undefined { return this.catalog.providerRetryPolicy(provider) }
+  override listModels(provider: string): Promise<readonly LlmModelInfo[]> { return this.catalog.listModels(provider) }
+  override resolveModel(provider: string, model: string, signal?: AbortSignal): Promise<LlmResolvedModelInfo> {
+    return this.catalog.resolveModel(provider, model, signal)
+  }
+  override async prepareCall(provider: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall> {
+    return {
+      model: await this.catalog.resolveModel(provider, model, signal),
+      stream: options => this.stream(options),
+    }
+  }
+
+  override async *stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
+    const affinityKey = options.sessionId === undefined ? undefined : String(options.sessionId)
+    const lease = await this.pool.acquire(affinityKey)
+    let settled = false
+    try {
+      for await (const chunk of this.adapter(lease.credentialRef).stream(options)) yield chunk
+      lease.release({ status: 'success' })
+      settled = true
+    } catch (error: unknown) {
+      lease.release({ status: 'failure', error })
+      settled = true
+      throw error
+    } finally {
+      if (!settled) lease.release({ status: 'cancelled' })
+    }
+  }
+}
+
+/** Create a backwards-compatible single-account or multiprovider-backed Codex adapter. */
+export function createOpenAICodexAdapter(
+  credentials: OpenAICodexCredentialStore | OpenAICodexAccountPool,
+  resolveAttachments: () => AttachmentStore | undefined,
+  responsePreferences: () => ResponseApiPreferences,
+): LlmAdapter {
+  return 'acquire' in credentials
+    ? new PooledOpenAICodexAdapter(credentials, resolveAttachments, responsePreferences)
+    : createSingleOpenAICodexAdapter(credentials, resolveAttachments, responsePreferences)
 }

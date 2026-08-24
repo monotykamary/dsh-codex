@@ -14,6 +14,7 @@ import type {} from '@monotykamary/dsh-web'
 import type {} from '@monotykamary/dsh-host-webserver'
 import type {} from '@monotykamary/dsh-tools'
 import type {} from '@monotykamary/dsh-fs'
+import { MultiProviderService } from 'dsh-multiprovider'
 import { createOpenAICodexAdapter } from './adapter.ts'
 import { registerOpenAICodexAuthRoutes } from './auth-routes.ts'
 import { installReadImageEnhancement } from './read-image-enhancement.ts'
@@ -61,8 +62,12 @@ import {
 import type { OpenAICodexSearchContextSize, OpenAICodexSearchMode } from './search.ts'
 import { OpenAICodexCredentialStore, OPENAI_CODEX_PROVIDER } from './store.ts'
 import { OpenAICodexService } from './service.ts'
+import { OpenAICodexAccountPool } from './account-pool.ts'
 
 export { OpenAICodexService } from './service.ts'
+export { OpenAICodexAccounts, openAICodexAccountDirectory } from './accounts.ts'
+export type { OpenAICodexAccount, PendingOpenAICodexAccount } from './accounts.ts'
+export { OpenAICodexAccountPool, classifyOpenAICodexFailure } from './account-pool.ts'
 export type { OpenAICodexServiceOptions } from './service.ts'
 
 export { loginOpenAICodex, logoutOpenAICodex, openAICodexAuthStatus } from './auth.ts'
@@ -142,20 +147,22 @@ export function apply(ctx: Context, config: Config): void {
     useWebSocketContextReuse: config.useWebSocketContextReuse ?? false,
     useNativeCompaction: config.useNativeCompaction ?? false,
   })
-  const credentials = service.credentials
+  const scheduler = ctx.get('multiprovider') ?? new MultiProviderService()
+  const accountPool = new OpenAICodexAccountPool(service.accounts, scheduler)
+  ctx.effect(() => accountPool.register(), 'dsh-openai-codex: multiprovider account pool')
   const imageTools = service.policy
   ctx.provide('openAICodex', service)
   ctx.inject(['settings'], settingsCtx => { service.attachSettings(settingsCtx) })
   ctx.llm.registerAdapter(
     [OPENAI_CODEX_PROVIDER],
     createOpenAICodexAdapter(
-      credentials,
+      accountPool,
       () => ctx.get('attachments'),
       () => imageTools.responseApiSnapshot(),
     ),
   )
   ctx.web.registerSearchProvider(new OpenAICodexSearchProvider({
-    credentials,
+    accountPool,
     model: config.searchModel ?? DEFAULT_OPENAI_CODEX_SEARCH_MODEL,
     mode: config.searchMode ?? DEFAULT_OPENAI_CODEX_SEARCH_MODE,
     contextSize: config.searchContextSize ?? DEFAULT_OPENAI_CODEX_SEARCH_CONTEXT_SIZE,
@@ -163,9 +170,9 @@ export function apply(ctx: Context, config: Config): void {
     resolveRequestId: () => String(ctx.get('agents')?.currentInitiator()?.session.id ?? randomUUID()),
     recordRequest: request => { recordOpenAICodexSearchRequest(ctx, request) },
   }))
-  ctx.inject(['webServer'], webCtx => registerOpenAICodexAuthRoutes(webCtx, credentials, imageTools))
+  ctx.inject(['webServer'], webCtx => registerOpenAICodexAuthRoutes(webCtx, service.accounts, imageTools))
   ctx.inject(['tools', 'fs', 'attachments'], toolCtx => {
-    toolCtx.tools.register(imagegenTool(toolCtx, credentials, imageTools))
+    toolCtx.tools.register(imagegenTool(toolCtx, accountPool, imageTools))
   })
   ctx.inject(['tools', 'fs', 'attachments', 'agents'], toolCtx => {
     installReadImageEnhancement(toolCtx, imageTools)

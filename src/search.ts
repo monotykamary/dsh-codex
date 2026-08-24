@@ -15,6 +15,7 @@ import type {
 } from '@monotykamary/dsh-web'
 import type { OpenAICodexCredentialStore } from './store.ts'
 import { OPENAI_CODEX_PROVIDER } from './store.ts'
+import type { OpenAICodexAccountPool } from './account-pool.ts'
 
 /** Stable dsh web-provider id selected by the bundle patch. */
 export const OPENAI_CODEX_SEARCH_PROVIDER = OPENAI_CODEX_PROVIDER
@@ -73,7 +74,9 @@ export interface OpenAICodexSearchRequestRecord {
 /** Fully resolved provider options. */
 export interface OpenAICodexSearchProviderOptions {
   /** Shared persistent OAuth store. */
-  readonly credentials: OpenAICodexCredentialStore
+  readonly credentials?: OpenAICodexCredentialStore
+  /** Shared scheduler used by the composed plugin; omitted by legacy single-account callers. */
+  readonly accountPool?: OpenAICodexAccountPool
   /** Model sent to the standalone search endpoint. */
   readonly model: string
   /** Cached, indexed, or live external-web policy. */
@@ -223,14 +226,16 @@ function providerMessage(value: unknown): string | undefined {
 }
 
 /** OpenAI Codex standalone-search provider using the same refreshable OAuth store as the LLM route. */
-export class OpenAICodexSearchProvider implements WebSearchProvider {
+type SingleSearchOptions = OpenAICodexSearchProviderOptions & { credentials: OpenAICodexCredentialStore }
+
+class OpenAICodexSingleAccountSearchProvider implements WebSearchProvider {
   readonly id = OPENAI_CODEX_SEARCH_PROVIDER
   private readonly models: Models
 
   /**
    * @param options - fixed trusted endpoint policy and deployment tunables.
    */
-  constructor(private readonly options: OpenAICodexSearchProviderOptions) {
+  constructor(private readonly options: SingleSearchOptions) {
     const models = createModels({ credentials: options.credentials })
     models.setProvider(openaiCodexProvider())
     this.models = models
@@ -324,5 +329,46 @@ export class OpenAICodexSearchProvider implements WebSearchProvider {
       )
     }
     return mapOpenAICodexSearchResponse(payload)
+  }
+}
+
+/** Standalone search provider that holds one scheduler lease for the full HTTP operation. */
+export class OpenAICodexSearchProvider implements WebSearchProvider {
+  readonly id = OPENAI_CODEX_SEARCH_PROVIDER
+
+  constructor(private readonly options: OpenAICodexSearchProviderOptions) {
+    if (options.credentials === undefined && options.accountPool === undefined) {
+      throw new Error('OpenAI Codex search requires credentials or an account pool')
+    }
+  }
+
+  available(): boolean {
+    return this.options.model.length > 0
+      && Number.isInteger(this.options.maxOutputTokens)
+      && this.options.maxOutputTokens > 0
+  }
+
+  async search(request: WebSearchRequest, signal?: AbortSignal): Promise<WebSearchResult> {
+    const requestId = this.options.resolveRequestId()
+    if (this.options.accountPool === undefined) {
+      return new OpenAICodexSingleAccountSearchProvider({
+        ...this.options,
+        credentials: this.options.credentials!,
+        resolveRequestId: () => requestId,
+      }).search(request, signal)
+    }
+    const lease = await this.options.accountPool.acquire(requestId)
+    try {
+      const result = await new OpenAICodexSingleAccountSearchProvider({
+        ...this.options,
+        credentials: lease.credentialRef,
+        resolveRequestId: () => requestId,
+      }).search(request, signal)
+      lease.release({ status: 'success' })
+      return result
+    } catch (error: unknown) {
+      lease.release(signal?.aborted === true ? { status: 'cancelled' } : { status: 'failure', error })
+      throw error
+    }
   }
 }

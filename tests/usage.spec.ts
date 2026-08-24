@@ -131,11 +131,15 @@ describe('OpenAI Codex usage', () => {
     vi.stubGlobal('fetch', vi.fn(async () => response({ error: 'unavailable' }, 503)))
     const status = await new OpenAICodexWebAuth(await authenticatedStore()).status()
 
-    expect(status).toEqual({
+    expect(status).toMatchObject({
       status: 'signed-in',
-      usage: { rateLimits: [] },
-      quotaError: 'OpenAI Codex usage request failed with HTTP 503',
+      accounts: [{
+        label: 'ChatGPT · count1',
+        legacy: true,
+        usage: { rateLimits: [] },
+        quotaError: 'OpenAI Codex usage request failed with HTTP 503',
+      }],
     })
-    expect(status).not.toHaveProperty('expiresAt')
+    expect(status).not.toHaveProperty('accessToken')
   })
 })

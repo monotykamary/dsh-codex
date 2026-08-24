@@ -5,6 +5,7 @@ import type { Context } from '@monotykamary/cordis'
 import { loginOpenAICodex, logoutOpenAICodex, openAICodexAuthStatus } from './auth.ts'
 import type { OpenAICodexAuthStatus } from './auth.ts'
 import { OpenAICodexCredentialStore } from './store.ts'
+import { OpenAICodexAccounts } from './accounts.ts'
 import { ImageToolPolicy } from './tool-policy.ts'
 import type {
   ImageToolPreferences,
@@ -28,7 +29,10 @@ export interface OpenAICodexServiceOptions extends ImageToolPreferences, Respons
  * Credentials and live policy stay singletons even when several front doors are mounted.
  */
 export class OpenAICodexService {
+  /** Legacy store remains the standalone CLI compatibility account. */
   readonly credentials = new OpenAICodexCredentialStore()
+  /** Fresh multi-account inventory used by the composed Web plugin. */
+  readonly accounts = new OpenAICodexAccounts(undefined, this.credentials)
   readonly policy: ImageToolPolicy
 
   constructor(options: OpenAICodexServiceOptions) {
