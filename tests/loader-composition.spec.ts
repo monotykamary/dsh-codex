@@ -30,7 +30,7 @@ describe('OpenAI Codex real composition', () => {
       '- id: web',
       "  name: 'test-web-service'",
       '- id: llm-openai-codex',
-      '  name: dsh-codex',
+      "  name: '@monotykamary/dsh-codex'",
       '',
     ].join('\n'))
 
@@ -42,7 +42,7 @@ describe('OpenAI Codex real composition', () => {
     const modules = new Map<string, unknown>([
       ['test-llm-service', LlmRuntime],
       ['test-web-service', WebRuntime],
-      ['dsh-codex', OpenAICodex],
+      ['@monotykamary/dsh-codex', OpenAICodex],
     ])
     ctx.loader.internal = {
       version: 'v2',
@@ -61,7 +61,7 @@ describe('OpenAI Codex real composition', () => {
     const models = await ctx.llm.listModels('openai-codex')
     expect(models.some(model => model.id === 'gpt-5.6-sol')).toBe(true)
 
-    const entry = [...ctx.loader.entries()].find(candidate => candidate.options.name === 'dsh-codex')
+    const entry = [...ctx.loader.entries()].find(candidate => candidate.options.name === '@monotykamary/dsh-codex')
     if (entry === undefined) throw new Error('OpenAI Codex Loader entry missing')
     if (entry.fiber === undefined) throw new Error('OpenAI Codex plugin fiber missing')
     await entry.fiber.dispose()

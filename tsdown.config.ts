@@ -1,6 +1,6 @@
 import type { UserConfig } from 'tsdown'
 
-const PLUGIN_ID = 'dsh-codex'
+const PLUGIN_ID = '@monotykamary/dsh-codex'
 const CLIENT_EXTERNALS = [
   'react',
   'react/jsx-runtime',

@@ -75,7 +75,7 @@ dsh --profile web --dump-config
 
 Require all of these facts:
 
-- `llm-openai-codex` loads `dsh-codex`;
+- `llm-openai-codex` loads `@monotykamary/dsh-codex`;
 - `agent-default-model` selects provider `openai-codex` and model `gpt-5.6-sol`, unless a later user setting overrides it;
 - the `web` row selects `searchProvider: openai-codex`;
 - `llm-openai-codex.config.searchMode` equals the selected mode.
@@ -109,7 +109,7 @@ For a local Web profile, the equivalent path is **Settings → OpenAI Codex → 
 For the `web` profile, start `dsh web` if the user wants the application running. Require:
 
 - the root page loads;
-- its boot manifest contains `dsh-codex` and the plugin `client.js` URL;
+- its boot manifest contains `@monotykamary/dsh-codex` and the plugin `client.js` URL;
 - `GET /plugins/dsh-openai-codex/auth/status` returns JSON without credentials;
 - Settings contains an **OpenAI Codex** section.
 
