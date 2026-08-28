@@ -4,11 +4,11 @@ This is the complete installation procedure for Codex, Claude Code, and other au
 
 ## Objective
 
-Install the public `dsh-codex` bundle into the requested DeepSeek Harness profile, enable its model and search routes, preserve unrelated user configuration, and verify non-secret login state.
+Install the public `@monotykamary/dsh-codex` bundle into the requested DeepSeek Harness profile, enable its model and search routes, preserve unrelated user configuration, and verify non-secret login state.
 
 ## Defaults
 
-- **Package:** install `dsh-codex` from the configured npm registry. Use a local checkout only when the user explicitly supplies one for development.
+- **Package:** install `@monotykamary/dsh-codex` from the configured npm registry. Use a local checkout only when the user explicitly supplies one for development.
 - **Profile:** use the user-named profile; otherwise use `web`.
 - **Launcher:** prefer an installed `dsh`. From a DeepSeek Harness source checkout, run commands in that checkout and replace `dsh` with `pnpm dsh`.
 - **Search mode:** use `live` unless the user requests `cached` or `indexed`.
@@ -34,22 +34,22 @@ Run `dsh --version` or `dsh --help`. From a source checkout, run `pnpm dsh --ver
 For the default Web profile:
 
 ```sh
-dsh plugin --profile web add dsh-codex
+dsh plugin --profile web add @monotykamary/dsh-codex
 ```
 
 From a Harness source checkout:
 
 ```sh
-pnpm dsh plugin --profile web add dsh-codex
+pnpm dsh plugin --profile web add @monotykamary/dsh-codex
 ```
 
-If the user explicitly supplied a local checkout, first require `package.json`, `cordis.patch.yml`, `lib/index.js`, `lib/client.js`, and `lib/bin.js`, and require `package.json.name` to equal `dsh-codex`. Then install its normalized absolute path, using forward slashes on Windows:
+If the user explicitly supplied a local checkout, first require `package.json`, `cordis.patch.yml`, `lib/index.js`, `lib/client.js`, and `lib/bin.js`, and require `package.json.name` to equal `@monotykamary/dsh-codex`. Then install its normalized absolute path, using forward slashes on Windows:
 
 ```sh
 dsh plugin --profile web add link:E:/absolute/path/to/dsh-codex
 ```
 
-Do not run a build when committed `lib/` artifacts are present. The install command is idempotent and must leave `dsh-codex` in the profile dependency map and `dsh.profile.bundles` exactly once.
+Do not run a build when committed `lib/` artifacts are present. The install command is idempotent and must leave `@monotykamary/dsh-codex` in the profile dependency map and `dsh.profile.bundles` exactly once.
 
 ### 3. Configure search without replacing user settings
 
@@ -120,7 +120,7 @@ Do not call the login endpoint as a health check because it starts OAuth. The We
 Report only:
 
 - installed profile;
-- installed `dsh-codex` version or local checkout path;
+- installed `@monotykamary/dsh-codex` version or local checkout path;
 - selected search mode;
 - signed-in or signed-out state;
 - whether the Web client entry was detected.
@@ -129,8 +129,8 @@ Do not report OAuth URLs, authorization codes, token timestamps, account ids, or
 
 ## Failure handling
 
-- **Package not found:** confirm the registry is `https://registry.npmjs.org/` and retry the exact package name `dsh-codex`.
-- **Executable not found:** run `dsh plugin --profile <profile> why dsh-codex`, then repeat the add command.
+- **Package not found:** confirm the registry is `https://registry.npmjs.org/` and retry the exact package name `@monotykamary/dsh-codex`.
+- **Executable not found:** run `dsh plugin --profile <profile> why @monotykamary/dsh-codex`, then repeat the add command.
 - **Client entry missing:** confirm the installed package contains `lib/client.js`, restart dsh, and repeat composition validation.
 - **Duplicate provider:** remove only a manually configured `llm-pi-ai.providers.openai-codex` route.
 - **401/403 after login:** run the dedicated login again; do not copy Codex CLI credentials.
@@ -143,7 +143,7 @@ Do not report OAuth URLs, authorization codes, token timestamps, account ids, or
 ## Updating
 
 ```sh
-dsh plugin --profile web update dsh-codex
+dsh plugin --profile web update @monotykamary/dsh-codex
 ```
 
 Restart dsh and repeat composition, login-status, and Web verification. A local `link:` installation follows its checkout and is reconciled by repeating the local add command instead.
@@ -153,7 +153,7 @@ Restart dsh and repeat composition, login-status, and Web verification. A local 
 Only when explicitly requested:
 
 ```sh
-dsh plugin --profile web remove dsh-codex
+dsh plugin --profile web remove @monotykamary/dsh-codex
 ```
 
 Remove only the `llm-openai-codex` row from the profile patch. Credential deletion is separate and requires explicit authorization:

@@ -21,11 +21,11 @@ ChatGPT 订阅认证与按量计费的 OpenAI API 是不同产品。本插件只
 从 npm 把预构建 bundle 安装到选定的 dsh profile：
 
 ```sh
-dsh plugin --profile web add dsh-codex
+dsh plugin --profile web add @monotykamary/dsh-codex
 dsh web
 ```
 
-从 DeepSeek Harness 源码 checkout 运行时，使用 `pnpm dsh plugin --profile web add dsh-codex`。开发插件时仍可用 `link:/absolute/path/to/dsh-codex` 安装本地 checkout。
+从 DeepSeek Harness 源码 checkout 运行时，使用 `pnpm dsh plugin --profile web add @monotykamary/dsh-codex`。开发插件时仍可用 `link:/absolute/path/to/dsh-codex` 安装本地 checkout。
 
 打开 **设置 → OpenAI Codex → 使用 ChatGPT 登录**。插件会打开 OpenAI 授权页面，并通过 localhost 回调完成登录。账号页面会显示实时 Codex 额度进度条与精确剩余百分比；只有账号接口提供信用余额或工作区限额时，才会一并显示精确数值。
 
@@ -41,7 +41,7 @@ dsh plugin --profile web exec dsh-openai-codex logout
 在 `dsh-tui` 中使用时，把 bundle 安装到同一个 profile：
 
 ```sh
-dsh plugin --profile dsh-tui add dsh-codex
+dsh plugin --profile dsh-tui add @monotykamary/dsh-codex
 ```
 
 重新启动 TUI 后，`/model` 会列出 `openai-codex` 的模型；没有显式模型配置或已保存选择时，TUI 会采用 bundle 注册的 `gpt-5.6-sol`。`/codex status|login|logout|usage|config` 用于管理账号与查看配置，四个布尔开关可通过 `/codex set <read-image|imagegen-other-models|websocket-context|native-compaction> <on|off>` 修改。浏览器登录完成后，凭据与 Web profile 共用同一份 dsh 凭据文件。

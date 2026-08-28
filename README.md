@@ -21,11 +21,11 @@ ChatGPT subscription authentication and usage-based OpenAI API access are differ
 Install the prebuilt bundle from npm into the selected dsh profile:
 
 ```sh
-dsh plugin --profile web add dsh-codex
+dsh plugin --profile web add @monotykamary/dsh-codex
 dsh web
 ```
 
-From a DeepSeek Harness source checkout, use `pnpm dsh plugin --profile web add dsh-codex`. A local plugin checkout can still be installed with `link:/absolute/path/to/dsh-codex` for development.
+From a DeepSeek Harness source checkout, use `pnpm dsh plugin --profile web add @monotykamary/dsh-codex`. A local plugin checkout can still be installed with `link:/absolute/path/to/dsh-codex` for development.
 
 Open **Settings → OpenAI Codex → Add ChatGPT account**. Each authorization adds or refreshes one account without signing out the others. The account page lists every account separately, supports targeted removal, and shows each account's live Codex quota bars and exact remaining percentages; exact credit balances or workspace limits appear only when the account API supplies them. Requests are leased through `dsh-multiprovider`, with session affinity and health-aware cooldowns so one exhausted or failing account does not disable the others.
 
@@ -41,7 +41,7 @@ dsh plugin --profile web exec dsh-openai-codex logout
 For `dsh-tui`, install the bundle into the same profile:
 
 ```sh
-dsh plugin --profile dsh-tui add dsh-codex
+dsh plugin --profile dsh-tui add @monotykamary/dsh-codex
 ```
 
 After restarting the TUI, `/model` lists the `openai-codex` catalog. With no explicit route or saved selection, the TUI adopts the bundle's `gpt-5.6-sol` default. Use `/codex status|login|logout|usage|config` for the compatibility account and live settings; the four boolean settings can be changed with `/codex set <read-image|imagegen-other-models|websocket-context|native-compaction> <on|off>`. The Settings page is the multi-account management surface; the CLI compatibility account participates in the same request pool.
